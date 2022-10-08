@@ -34,7 +34,10 @@ def compute_saliency_maps(X, y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    s = model(X)
+    correct_class_scores = s.gather(1, y.view(-1, 1)).squeeze()
+    correct_class_scores.backward(torch.ones_like(correct_class_scores))
+    saliency, _ = torch.max(torch.abs(X.grad), dim=1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -76,7 +79,16 @@ def make_fooling_image(X, target_y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    for iteration in range(100):
+      scores = model(X_fooling)
+      if scores.data.max(1)[1].item() == target_y:
+        break
+      target_scores = scores[:, target_y]
+      target_scores.backward()
+      g = X_fooling.grad.data
+      dX = learning_rate * g / g.norm()
+      X_fooling.data += dX
+      X_fooling.grad.zero_()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -93,8 +105,16 @@ def class_visualization_update_step(img, model, target_y, l2_reg, learning_rate)
     # Be very careful about the signs of elements in your code.            #
     ########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
+    
+    scores = model(img)
+    target_scores = scores[:, target_y]
+    loss = scores - l2_reg * torch.sum(img * img)
+    loss.backward(torch.ones_like(loss))
+    g = img.grad.data
+    dimg = learning_rate * g / g.norm()
+    
+    img.data += dimg
+    img.grad.zero_()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ########################################################################
