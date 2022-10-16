@@ -38,7 +38,11 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        index = [i for i in range(max_len)]
+        even_idx = [i for i in range(embed_dim)if i % 2 == 0]
+        odd_idx = [i for i in range(embed_dim)if i % 2 != 0]
+        pe[:, :, even_idx] = torch.tensor([[math.sin(i*pow(10000, -j/embed_dim))for j in even_idx]for i in index])
+        pe[:, :, odd_idx] = torch.tensor([[math.cos(i*pow(10000, -(j-1)/embed_dim))for j in odd_idx]for i in index])
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -70,7 +74,7 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        output = self.dropout(x + self.pe[:, 0:S, 0:D])
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -165,7 +169,18 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        Q = self.query(query).reshape((N, S, self.n_head, self.head_dim)).transpose(1, 2)
+        K = self.key(key).reshape((N, T, self.n_head, self.head_dim)).transpose(1, 2)
+        V = self.value(value).reshape((N, T, self.n_head, self.head_dim)).transpose(1, 2)
+
+        energy = torch.matmul(Q, K.transpose(2, 3)) / math.sqrt(self.head_dim)
+        
+        if attn_mask is not None:
+          energy = energy.masked_fill(attn_mask == False, -math.inf)
+        attention = torch.softmax(energy, dim=3)
+        attention = self.attn_drop(attention)
+        output = torch.matmul(attention, V)
+        output = self.proj(output.transpose(1, 2).reshape((N, S, self.emd_dim)))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
